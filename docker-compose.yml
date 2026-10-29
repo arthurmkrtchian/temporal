@@ -1,0 +1,93 @@
+# =====================================================================================
+# ИНФРАСТРУКТУРА TEMPORAL В DOCKER (Запускается командой: docker compose up -d)
+# =====================================================================================
+# Что за чем запускается и зачем нужен каждый из 4 контейнеров:
+#
+# 1. postgresql (:5432)          — "Несгораемый сейф" (База данных). Здесь сервер Temporal хранит
+#                                  дневники всех шагов (Event History), таймеры и состояние сценариев.
+# 2. temporal (:7233)            — "Главный диспетчер" (Temporal Server). Ждёт, пока запустится база данных,
+#                                  создаёт в ней таблицы и открывает порт 7233 для нашего Java-приложения.
+# 3. temporal-ui (:8080)         — "Красивый телевизор" (Веб-панель в браузере http://localhost:8080).
+#                                  Показывает все живые и завершённые процессы, их ошибки, ретраи и графики.
+# 4. temporal-admin-tools        — Консольная утилита администратора для редких ручных команд внутри Docker.
+
+services:
+  # 1. База данных PostgreSQL — хранит Event History и состояние воркфлоу
+  postgresql:
+    image: postgres:16-alpine
+    container_name: temporal-postgresql
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - temporal-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # 2. Основной сервер Temporal (автоматически создает схему БД и комнату Namespace "default")
+  temporal:
+    image: temporalio/auto-setup:latest
+    container_name: temporal-server
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgresql
+      - DBNAME=temporal
+      - VISIBILITY_DBNAME=temporal_visibility
+    ports:
+      - "7233:7233" # Главный gRPC-порт, к которому подключается наше Spring Boot приложение
+    networks:
+      - temporal-network
+    restart: unless-stopped
+
+  # 3. Веб-интерфейс / Админка (Temporal Web UI) — открой http://localhost:8080 в браузере!
+  temporal-ui:
+    image: temporalio/ui:latest
+    container_name: temporal-ui
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:8080
+    ports:
+      - "8080:8080"
+    networks:
+      - temporal-network
+    restart: unless-stopped
+
+  # 4. Утилиты администратора (Temporal CLI)
+  temporal-admin-tools:
+    image: temporalio/admin-tools:latest
+    container_name: temporal-admin-tools
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    stdin_open: true
+    tty: true
+    networks:
+      - temporal-network
+    restart: unless-stopped
+
+networks:
+  temporal-network:
+    driver: bridge
+    name: temporal-network
+
+volumes:
+  postgres_data:
+    driver: local

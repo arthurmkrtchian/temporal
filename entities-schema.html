@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Temporal Entities Schema — Интерактивный справочник</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --bg-elevated: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-col: #334155;
+      --accent: #6366f1;
+    }
+    html.light {
+      --bg-main: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-elevated: #f1f5f9;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --border-col: #e2e8f0;
+      --accent: #4f46e5;
+    }
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+    }
+    .card-surface {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-col);
+    }
+    .elevated-surface {
+      background-color: var(--bg-elevated);
+    }
+    .muted-text {
+      color: var(--text-muted);
+    }
+    .pulse-ring {
+      animation: pulseRing 2s infinite;
+    }
+    @keyframes pulseRing {
+      0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5); }
+      70% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+    }
+    .flow-line {
+      stroke-dasharray: 6 4;
+      animation: dashMove 1.2s linear infinite;
+    }
+    @keyframes dashMove {
+      to { stroke-dashoffset: -20; }
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased pb-12">
+
+  <!-- Top Header -->
+  <header class="sticky top-0 z-30 backdrop-blur-md bg-opacity-90 card-surface border-b px-6 py-4">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow">
+          T
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight">Temporal Entities &amp; Architecture</h1>
+          <p class="text-xs muted-text">Интерактивная схема сущностей, границ, связей и жизненного цикла (temporal-spring-demo)</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex flex-wrap gap-1.5" id="main-tabs">
+        <button onclick="switchTab('hierarchy')" data-tab="hierarchy" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-medium transition bg-indigo-600 text-white">
+          1. «Матрёшка» вложенности
+        </button>
+        <button onclick="switchTab('boundaries')" data-tab="boundaries" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-medium transition elevated-surface">
+          2. Физические границы
+        </button>
+        <button onclick="switchTab('er')" data-tab="er" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-medium transition elevated-surface">
+          3. Граф связей (ER)
+        </button>
+        <button onclick="switchTab('simulator')" data-tab="simulator" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-medium transition elevated-surface">
+          4. Симулятор шага
+        </button>
+        <button onclick="switchTab('states')" data-tab="states" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-medium transition elevated-surface">
+          5. Машина состояний
+        </button>
+        <button onclick="switchTab('project')" data-tab="project" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-medium transition elevated-surface">
+          6. Карта проекта
+        </button>
+      </nav>
+
+      <button onclick="toggleTheme()" class="px-3 py-1.5 rounded-lg text-xs font-medium elevated-surface hover:opacity-80 transition" title="Переключить тему">
+        Тема 🌓
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 pt-6">
+
+    <!-- ==================== TAB 1: HIERARCHY ("MATRYOSHKA") ==================== -->
+    <section id="tab-hierarchy" class="tab-panel space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-bold">1. «Матрёшка» вложенности: кто внутри кого живёт?</h2>
+          <p class="text-sm muted-text">Кликайте на любой блок, чтобы изучить его устройство, физическое расположение и связь с Java-кодом. Используйте кнопки для сворачивания уровней.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <input id="hierarchy-search" type="text" placeholder="Поиск сущности (напр. Saga, Sticky, RunId)..." oninput="filterHierarchy(this.value)"
+            class="px-3 py-1.5 rounded-lg text-xs card-surface focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64" />
+          <button onclick="expandAllHierarchy(true)" class="px-3 py-1.5 rounded-lg text-xs font-medium elevated-surface hover:opacity-80">Развернуть всё</button>
+          <button onclick="expandAllHierarchy(false)" class="px-3 py-1.5 rounded-lg text-xs font-medium elevated-surface hover:opacity-80">Свернуть</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <!-- Left Nested Matryoshka Tree -->
+        <div class="lg:col-span-8 space-y-3" id="matryoshka-root">
+          <!-- Cluster -->
+          <div class="matryoshka-node rounded-2xl border-2 border-indigo-500/60 bg-indigo-950/20 p-4 transition" data-entity="cluster">
+            <div class="flex items-center justify-between cursor-pointer select-none" onclick="selectEntity('cluster', event)">
+              <div class="flex items-center gap-2.5">
+                <button onclick="toggleCollapse('cluster-children', event)" class="w-6 h-6 rounded bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold">▼</button>
+                <span class="text-lg">🏛️</span>
+                <div>
+                  <div class="font-bold text-sm flex items-center gap-2">
+                    TEMPORAL CLUSTER
+                    <span class="px-2 py-0.5 text-xs rounded-full bg-indigo-500/20 text-indigo-300 font-medium">Root Infrastructure</span>
+                  </div>
+                  <div class="text-xs muted-text">Сервер оркестрации + БД PostgreSQL / Cassandra + Elasticsearch</div>
+                </div>
+              </div>
+              <span class="text-xs px-2 py-1 rounded elevated-surface">1 : N Namespaces</span>
+            </div>
+
+            <!-- Namespace -->
+            <div id="cluster-children" class="mt-4 pl-3 border-l-2 border-indigo-500/40 space-y-3">
+              <div class="matryoshka-node rounded-xl border-2 border-sky-500/50 bg-sky-950/15 p-3.5 transition" data-entity="namespace">
+                <div class="flex items-center justify-between cursor-pointer select-none" onclick="selectEntity('namespace', event)">
+                  <div class="flex items-center gap-2.5">
+                    <button onclick="toggleCollapse('namespace-children', event)" class="w-6 h-6 rounded bg-sky-500/20 text-sky-400 flex items-center justify-center text-xs font-bold">▼</button>
+                    <span class="text-lg">📂</span>
+                    <div>
+                      <div class="font-bold text-sm flex items-center gap-2">
+                        NAMESPACE <code class="text-xs px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300">"default"</code>
+                      </div>
+                      <div class="text-xs muted-text">Изолированная комната проекта: ретеншн истории, квоты, Search Attributes и права</div>
+                    </div>
+                  </div>
+                  <span class="text-xs px-2 py-1 rounded elevated-surface">Изоляция</span>
+                </div>
+
+                <!-- Inside Namespace -->
+                <div id="namespace-children" class="mt-3 pl-3 border-l-2 border-sky-500/40 space-y-3">
+
+                  <!-- Schedules -->
+                  <div class="matryoshka-node rounded-lg border border-amber-500/40 bg-amber-950/10 p-3 cursor-pointer hover:border-amber-400 transition" data-entity="schedules" onclick="selectEntity('schedules', event)">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <span>🗓️</span>
+                        <div>
+                          <div class="font-semibold text-sm">SCHEDULES (Расписания)</div>
+                          <div class="text-xs muted-text">По таймеру/календарю порождают новые ──► <code class="text-amber-300">Workflow Executions</code></div>
+                        </div>
+                      </div>
+                      <span class="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">Server Timer</span>
+                    </div>
+                  </div>
+
+                  <!-- Task Queue -->
+                  <div class="matryoshka-node rounded-lg border border-purple-500/50 bg-purple-950/15 p-3 transition" data-entity="task_queue">
+                    <div class="flex items-center justify-between cursor-pointer select-none" onclick="selectEntity('task_queue', event)">
+                      <div class="flex items-center gap-2">
+                        <button onclick="toggleCollapse('tq-children', event)" class="w-5 h-5 rounded bg-purple-500/20 text-purple-300 flex items-center justify-center text-xs font-bold">▼</button>
+                        <span>📋</span>
+                        <div>
+                          <div class="font-semibold text-sm flex items-center gap-2">
+                            TASK QUEUE <code class="text-xs px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">"ShowcaseTaskQueue"</code>
+                          </div>
+                          <div class="text-xs muted-text">Логическая шина задач в Matching Service (слушается Worker'ами по gRPC Long Polling)</div>
+                        </div>
+                      </div>
+                      <span class="text-xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-300">Matching</span>
+                    </div>
+                    <div id="tq-children" class="mt-2.5 grid grid-cols-1 md:grid-cols-3 gap-2 pl-2">
+                      <div onclick="selectEntity('wf_task_queue', event)" class="matryoshka-node p-2.5 rounded-lg card-surface hover:border-purple-400 cursor-pointer transition">
+                        <div class="font-medium text-xs">🧠 Workflow Task Sub-Queue</div>
+                        <div class="text-xs muted-text mt-0.5">Задачи на принятие решений: продвижение сценария</div>
+                      </div>
+                      <div onclick="selectEntity('act_task_queue', event)" class="matryoshka-node p-2.5 rounded-lg card-surface hover:border-purple-400 cursor-pointer transition">
+                        <div class="font-medium text-xs">🛠️ Activity Task Sub-Queue</div>
+                        <div class="text-xs muted-text mt-0.5">Задачи на внешние вызовы: походы в сеть, БД, API</div>
+                      </div>
+                      <div onclick="selectEntity('sticky_queue', event)" class="matryoshka-node p-2.5 rounded-lg card-surface hover:border-purple-400 cursor-pointer transition">
+                        <div class="font-medium text-xs">📌 Sticky Queue</div>
+                        <div class="text-xs muted-text mt-0.5">Быстрая очередь конкретного Worker'а с кэшем в ОЗУ</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Workflow Execution -->
+                  <div class="matryoshka-node rounded-xl border-2 border-emerald-500/50 bg-emerald-950/15 p-3.5 transition" data-entity="workflow_execution">
+                    <div class="flex items-center justify-between cursor-pointer select-none" onclick="selectEntity('workflow_execution', event)">
+                      <div class="flex items-center gap-2">
+                        <button onclick="toggleCollapse('wfe-children', event)" class="w-5 h-5 rounded bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-xs font-bold">▼</button>
+                        <span>🎬</span>
+                        <div>
+                          <div class="font-bold text-sm flex items-center gap-2">
+                            WORKFLOW EXECUTION
+                            <code class="text-xs px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">[WorkflowId: "showcase-a1b2c3"]</code>
+                          </div>
+                          <div class="text-xs muted-text">Запущенный бизнес-процесс (ключ уникальности внутри Namespace)</div>
+                        </div>
+                      </div>
+                      <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">1 : N Runs</span>
+                    </div>
+
+                    <!-- Workflow Run -->
+                    <div id="wfe-children" class="mt-3 pl-3 border-l-2 border-emerald-500/40 space-y-3">
+                      <div class="matryoshka-node rounded-xl border border-teal-500/50 bg-teal-950/20 p-3 transition" data-entity="workflow_run">
+                        <div class="flex items-center justify-between cursor-pointer select-none" onclick="selectEntity('workflow_run', event)">
+                          <div class="flex items-center gap-2">
+                            <button onclick="toggleCollapse('wfr-children', event)" class="w-5 h-5 rounded bg-teal-500/20 text-teal-300 flex items-center justify-center text-xs font-bold">▼</button>
+                            <span>🔄</span>
+                            <div>
+                              <div class="font-bold text-sm flex items-center gap-2">
+                                WORKFLOW RUN <code class="text-xs px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300">[RunId UUID]</code>
+                              </div>
+                              <div class="text-xs muted-text">Конкретная попытка выполнения (меняется при Retry всего Workflow, Reset или Continue-As-New)</div>
+                            </div>
+                          </div>
+                          <span class="text-xs px-2 py-0.5 rounded elevated-surface">Attempt</span>
+                        </div>
+
+                        <!-- Inside Workflow Run -->
+                        <div id="wfr-children" class="mt-3 pl-2 space-y-3">
+                          <!-- State & History Row -->
+                          <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                            <div onclick="selectEntity('event_history', event)" class="matryoshka-node p-2.5 rounded-lg card-surface hover:border-teal-400 cursor-pointer transition">
+                              <div class="font-semibold text-xs flex items-center gap-1.5">📜 EVENT HISTORY <span class="text-teal-400">(#1..#N)</span></div>
+                              <div class="text-xs muted-text mt-1">Неизменяемый лог событий в БД (Save Points для детерминированного Replay)</div>
+                            </div>
+                            <div onclick="selectEntity('mutable_state', event)" class="matryoshka-node p-2.5 rounded-lg card-surface hover:border-teal-400 cursor-pointer transition">
+                              <div class="font-semibold text-xs flex items-center gap-1.5">🗂️ MUTABLE STATE + MEMO + SEARCH ATTRIBUTES</div>
+                              <div class="text-xs muted-text mt-1">Текущее состояние на сервере и индексируемые теги для поиска</div>
+                            </div>
+                          </div>
+
+                          <!-- Message Passing -->
+                          <div class="p-3 rounded-lg border border-cyan-500/30 bg-cyan-950/10">
+                            <div class="text-xs font-bold text-cyan-400 mb-2">📡 КАНАЛЫ ВНЕШНЕГО ВЗАИМОДЕЙСТВИЯ (Message Passing)</div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                              <div onclick="selectEntity('signal', event)" class="matryoshka-node p-2 rounded card-surface hover:border-cyan-400 cursor-pointer transition">
+                                <div class="font-semibold text-xs">🔔 Signal <code class="text-cyan-300">@SignalMethod</code></div>
+                                <div class="text-xs muted-text mt-0.5">Вход (async, пишет в History, меняет стейт)</div>
+                              </div>
+                              <div onclick="selectEntity('query', event)" class="matryoshka-node p-2 rounded card-surface hover:border-cyan-400 cursor-pointer transition">
+                                <div class="font-semibold text-xs">🔍 Query <code class="text-cyan-300">@QueryMethod</code></div>
+                                <div class="text-xs muted-text mt-0.5">Выход (sync, только чтение, без записи в History)</div>
+                              </div>
+                              <div onclick="selectEntity('update', event)" class="matryoshka-node p-2 rounded card-surface hover:border-cyan-400 cursor-pointer transition">
+                                <div class="font-semibold text-xs">🔄 Update <code class="text-cyan-300">@UpdateMethod</code></div>
+                                <div class="text-xs muted-text mt-0.5">Вход + Выход (sync мутация + валидатор до записи)</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- Internal Primitives & Spawned Steps -->
+                          <div class="p-3 rounded-lg border border-rose-500/30 bg-rose-950/10">
+                            <div class="text-xs font-bold text-rose-400 mb-2">🧩 ВНУТРЕННИЕ ПРИМИТИВЫ И ПОРОЖДАЕМЫЕ ШАГИ</div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              <div onclick="selectEntity('durable_timer', event)" class="matryoshka-node p-2.5 rounded card-surface hover:border-rose-400 cursor-pointer transition">
+                                <div class="font-semibold text-xs">⏰ Durable Timer</div>
+                                <div class="text-xs muted-text mt-0.5"><code>Workflow.sleep</code> / <code>await</code> — персистентный будильник в БД сервера</div>
+                              </div>
+                              <div onclick="selectEntity('local_activity', event)" class="matryoshka-node p-2.5 rounded card-surface hover:border-rose-400 cursor-pointer transition">
+                                <div class="font-semibold text-xs">⚡ Local Activity</div>
+                                <div class="text-xs muted-text mt-0.5">Короткий шаг (&lt; 1 мс) в памяти того же JVM-процесса без общей очереди</div>
+                              </div>
+                              <div onclick="selectEntity('activity_execution', event)" class="matryoshka-node p-2.5 rounded card-surface hover:border-rose-400 cursor-pointer transition md:col-span-2">
+                                <div class="flex items-center justify-between">
+                                  <div class="font-semibold text-xs">🛠️ Activity Execution (Внешний шаг с <code>RetryOptions</code>, попытки 1..M)</div>
+                                  <span class="text-xs px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300">I/O Step</span>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 pl-2 border-l-2 border-rose-500/40">
+                                  <div onclick="selectEntity('heartbeat', event)" class="p-2 rounded elevated-surface hover:opacity-90 cursor-pointer">
+                                    <div class="font-medium text-xs">💓 Heartbeat &amp; Checkpoint</div>
+                                    <div class="text-xs muted-text">Пульс живого воркера и сохранённый прогресс</div>
+                                  </div>
+                                  <div onclick="selectEntity('task_token', event)" class="p-2 rounded elevated-surface hover:opacity-90 cursor-pointer">
+                                    <div class="font-medium text-xs">🎟️ TaskToken (Async Completion)</div>
+                                    <div class="text-xs muted-text">Токен для завершения задачи из внешней системы</div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div onclick="selectEntity('cancellation_scope', event)" class="matryoshka-node p-2.5 rounded card-surface hover:border-rose-400 cursor-pointer transition">
+                                <div class="font-semibold text-xs">🛡️ CancellationScope</div>
+                                <div class="text-xs muted-text mt-0.5">Коробка для групповой отмены параллельных веток (напр. проигравшей гонки)</div>
+                              </div>
+                              <div onclick="selectEntity('saga', event)" class="matryoshka-node p-2.5 rounded card-surface hover:border-rose-400 cursor-pointer transition">
+                                <div class="font-semibold text-xs">⏪ Saga (LIFO Compensation)</div>
+                                <div class="text-xs muted-text mt-0.5">Стек компенсирующих Activity для отката распределённой транзакции</div>
+                              </div>
+                              <div onclick="selectEntity('child_workflow', event)" class="matryoshka-node p-2.5 rounded card-surface hover:border-rose-400 cursor-pointer transition md:col-span-2">
+                                <div class="font-semibold text-xs">👶 Child Workflow Execution</div>
+                                <div class="text-xs muted-text mt-0.5">Дочерний процесс со своим собственным <code>WorkflowId</code>, <code>RunId</code>, <code>Event History</code> и политикой <code>ParentClosePolicy</code></div>
+                              </div>
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Entity Details Inspector -->
+        <div class="lg:col-span-4 lg:sticky lg:top-24 card-surface rounded-2xl p-5 space-y-4 shadow-lg" id="entity-inspector">
+          <div class="flex items-center justify-between border-b border-slate-700/60 pb-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-indigo-400" id="insp-badge">Инспектор сущности</span>
+            <span class="text-xs px-2 py-0.5 rounded elevated-surface font-mono" id="insp-location">Server + DB</span>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold" id="insp-title">🏛️ Temporal Cluster</h3>
+            <p class="text-sm muted-text mt-1 leading-relaxed" id="insp-desc">
+              Кликните на любой элемент слева, чтобы увидеть детальное описание, где физически хранится сущность, её кратность и как она используется в проекте.
+            </p>
+          </div>
+          <div class="space-y-2 pt-2 border-t border-slate-700/60 text-xs">
+            <div><span class="muted-text">Родитель / Контекст:</span> <span class="font-semibold" id="insp-parent">Инфраструктура (Docker / K8s)</span></div>
+            <div><span class="muted-text">Кратность связей:</span> <span class="font-mono text-indigo-300" id="insp-card">1 Cluster → N Namespaces</span></div>
+            <div><span class="muted-text">В проекте:</span> <code class="px-1.5 py-0.5 rounded elevated-surface text-emerald-400" id="insp-code">docker-compose.yml / application.yml</code></div>
+          </div>
+          <div class="pt-2">
+            <div class="text-xs font-semibold muted-text mb-1.5">Пример в Java / Конфигурации:</div>
+            <pre class="p-3 rounded-xl bg-slate-950 text-slate-200 text-xs overflow-x-auto font-mono leading-relaxed" id="insp-snippet">spring:
+  temporal:
+    namespace: default
+    connection:
+      target: 127.0.0.1:7233</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: PHYSICAL BOUNDARIES ==================== -->
+    <section id="tab-boundaries" class="tab-panel hidden space-y-6">
+      <div>
+        <h2 class="text-xl font-bold">2. Физические границы: где живёт каждая сущность?</h2>
+        <p class="text-sm muted-text">Самая частая путаница: <strong>Temporal Server НЕ содержит и НЕ выполняет ваш Java-код!</strong> Нажимайте на любой из 3 узлов архитектуры или каналы связи gRPC, чтобы подсветить детали.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Tier 1: Client -->
+        <div onclick="selectBoundary('client')" id="bound-client" class="card-surface rounded-2xl p-5 border-2 border-sky-500/60 cursor-pointer hover:border-sky-400 transition space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-sky-500/20 text-sky-300">Уровень 1 • Инициатор</span>
+            <span class="text-xs font-mono muted-text">HTTP :8081 / CLI</span>
+          </div>
+          <h3 class="text-lg font-bold">🌐 1. КЛИЕНТ (REST Controller / UI / CLI)</h3>
+          <p class="text-xs muted-text">Любой сервис или контроллер, который общается с Temporal по gRPC для управления процессами.</p>
+          <div class="space-y-2 text-xs">
+            <div class="p-2.5 rounded-lg elevated-surface">
+              <div class="font-bold text-sky-300">Использует SDK-клиенты:</div>
+              <ul class="mt-1 space-y-1 list-disc list-inside muted-text">
+                <li><code>WorkflowClient</code> — старт, сигналы, запросы</li>
+                <li><code>ScheduleClient</code> — управление расписаниями</li>
+                <li><code>ActivityCompletionClient</code> — колбэк по токену</li>
+              </ul>
+            </div>
+            <div class="p-2.5 rounded-lg elevated-surface">
+              <div class="font-bold text-sky-300">Что делает:</div>
+              <ul class="mt-1 space-y-1 list-disc list-inside muted-text">
+                <li>Запускает Workflow (<code>start</code> / <code>execute</code>)</li>
+                <li>Шлёт <code>Signals</code>, <code>Queries</code>, <code>Updates</code></li>
+                <li>Завершает внешние Activity по <code>TaskToken</code></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tier 2: Temporal Server -->
+        <div onclick="selectBoundary('server')" id="bound-server" class="card-surface rounded-2xl p-5 border-2 border-indigo-500 cursor-pointer hover:border-indigo-400 transition space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300">Уровень 2 • Оркестратор</span>
+            <span class="text-xs font-mono muted-text">gRPC :7233</span>
+          </div>
+          <h3 class="text-lg font-bold">🏛️ 2. TEMPORAL SERVER + БД</h3>
+          <div class="px-3 py-2 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs font-semibold">
+            ❗ НЕ СОДЕРЖИТ И НЕ ВЫПОЛНЯЕТ ВАШ JAVA-КОД!
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+            <div class="p-2.5 rounded-lg elevated-surface">
+              <div class="font-bold text-indigo-300">💾 Хранит в БД (PostgreSQL):</div>
+              <ul class="mt-1.5 space-y-1 muted-text">
+                <li>• <code>Namespaces</code></li>
+                <li>• <code>Event History (#1..#N)</code></li>
+                <li>• <code>Mutable State</code></li>
+                <li>• <code>Search Attributes &amp; Memo</code></li>
+              </ul>
+            </div>
+            <div class="p-2.5 rounded-lg elevated-surface">
+              <div class="font-bold text-purple-300">⚡ Управляет в памяти:</div>
+              <ul class="mt-1.5 space-y-1 muted-text">
+                <li>• <code>Task Queues</code> (Matching)</li>
+                <li>• <code>Timer Queue</code> (Будильники)</li>
+                <li>• <code>Schedules</code> (Расписания)</li>
+                <li>• <code>Retry Backoff Timers</code></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tier 3: Worker Process -->
+        <div onclick="selectBoundary('worker')" id="bound-worker" class="card-surface rounded-2xl p-5 border-2 border-emerald-500/60 cursor-pointer hover:border-emerald-400 transition space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300">Уровень 3 • Исполнитель кода</span>
+            <span class="text-xs font-mono muted-text">Long Polling → :7233</span>
+          </div>
+          <h3 class="text-lg font-bold">👷 3. WORKER PROCESS (Spring Boot)</h3>
+          <p class="text-xs muted-text">Ваше приложение. Сами воркеры вытягивают задачи с сервера по <strong>gRPC Long Polling</strong> (сервер не стучится в воркер снаружи!).</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+            <div class="p-2.5 rounded-lg elevated-surface border border-emerald-500/30">
+              <div class="font-bold text-emerald-300">🧠 Workflow Worker</div>
+              <ul class="mt-1.5 space-y-1 muted-text">
+                <li>• Крутит <code>@WorkflowImpl</code></li>
+                <li>• Делает детерминированный Replay</li>
+                <li>• Вызывает Local Activities</li>
+                <li>• Считает <code>Saga</code> и <code>CancellationScope</code></li>
+              </ul>
+            </div>
+            <div class="p-2.5 rounded-lg elevated-surface border border-teal-500/30">
+              <div class="font-bold text-teal-300">🛠️ Activity Worker</div>
+              <ul class="mt-1.5 space-y-1 muted-text">
+                <li>• Крутит <code>@ActivityImpl</code></li>
+                <li>• Ходит в БД, HTTP, брокеры</li>
+                <li>• Шлёт <code>Heartbeat(progress)</code></li>
+                <li>• Генерирует <code>TaskToken</code></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive gRPC Data Flow Banner -->
+      <div class="card-surface rounded-2xl p-5">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <h4 class="font-bold text-sm" id="bound-detail-title">Поток взаимодействия через gRPC (порт 7233)</h4>
+          <span class="text-xs px-2.5 py-1 rounded bg-indigo-500/20 text-indigo-300">Важно: Воркерам не нужен открытый входящий порт!</span>
+        </div>
+        <p class="text-sm muted-text leading-relaxed" id="bound-detail-text">
+          И <strong>Клиент</strong>, и <strong>Worker Process</strong> сами открывают исходящее gRPC-соединение к <code>Temporal Server (:7233)</code>. Когда появляется задача в <code>Task Queue</code>, Worker моментально получает её через уже открытый Long Polling запрос, выполняет кусок Java-кода и возвращает ответ серверу.
+        </p>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 3: ER GRAPH & DEPENDENCIES ==================== -->
+    <section id="tab-er" class="tab-panel hidden space-y-6">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-bold">3. Граф взаимозависимостей и кардинальность связей (ER-схема)</h2>
+          <p class="text-sm muted-text">Наведите курсор или кликните на любой узел графа, чтобы подсветить только его прямые связи (`1:1`, `1:N`, `N:1`) и отфильтровать таблицу ниже.</p>
+        </div>
+        <button onclick="resetErSelection()" class="px-3 py-1.5 rounded-lg text-xs font-medium elevated-surface hover:opacity-80">Сбросить фильтр графа</button>
+      </div>
+
+      <!-- Interactive SVG Graph -->
+      <div class="card-surface rounded-2xl p-4 overflow-x-auto">
+        <svg id="er-svg" viewBox="0 0 1050 480" class="w-full min-w-[850px] h-auto select-none">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#6366f1" />
+            </marker>
+          </defs>
+          <g id="er-edges"></g>
+          <g id="er-nodes"></g>
+        </svg>
+      </div>
+
+      <!-- Dependency Table -->
+      <div class="card-surface rounded-2xl overflow-hidden">
+        <div class="px-5 py-3 border-b border-slate-700/60 flex items-center justify-between">
+          <h3 class="font-bold text-sm">Таблица зависимостей: кто от кого зависит и кого порождает</h3>
+          <span class="text-xs muted-text" id="er-table-status">Показаны все сущности</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="elevated-surface muted-text uppercase">
+                <th class="py-3 px-4">Сущность</th>
+                <th class="py-3 px-4">От чего зависит (Родитель / Контекст)</th>
+                <th class="py-3 px-4">Кого порождает или кем управляет</th>
+                <th class="py-3 px-4">Кратность</th>
+              </tr>
+            </thead>
+            <tbody id="er-table-body" class="divide-y divide-slate-700/50">
+              <tr data-er="NAMESPACE" class="hover:bg-indigo-500/10 transition cursor-pointer" onclick="highlightErNode('NAMESPACE')">
+                <td class="py-3 px-4 font-bold text-sky-400">📂 Namespace</td>
+                <td class="py-3 px-4"><code>Temporal Cluster</code></td>
+                <td class="py-3 px-4">Содержит <code>Workflow Executions</code>, <code>Task Queues</code>, <code>Schedules</code></td>
+                <td class="py-3 px-4 font-mono text-indigo-300">1 Cluster → N Namespaces</td>
+              </tr>
+              <tr data-er="TASK_QUEUE" class="hover:bg-indigo-500/10 transition cursor-pointer" onclick="highlightErNode('TASK_QUEUE')">
+                <td class="py-3 px-4 font-bold text-purple-400">📋 Task Queue</td>
+                <td class="py-3 px-4"><code>Namespace</code> (создаётся на лету по имени строки)</td>
+                <td class="py-3 px-4">Раздаёт <code>Workflow Tasks</code> и <code>Activity Tasks</code> подключённым <code>Workers</code></td>
+                <td class="py-3 px-4 font-mono text-indigo-300">1 Queue ↔ N Workers</td>
+              </tr>
+              <tr data-er="WORKER" class="hover:bg-indigo-500/10 transition cursor-pointer" onclick="highlightErNode('WORKER')">
+                <td class="py-3 px-4 font-bold text-emerald-400">👷 Worker Process</td>
+                <td class="py-3 px-4">Слушает ровно 1 <code>Task Queue</code> (в процессе может быть несколько воркеров)</td>
+                <td class="py-3 px-4">Регистрирует классы <code>@WorkflowImpl</code> и бины <code>@ActivityImpl</code></td>
+                <td class="py-3 px-4 font-mono text-indigo-300">N Workers → 1 Task Queue</td>
+              </tr>
+              <tr data-er="WORKFLOW_EXECUTION" class="hover:bg-indigo-500/10 transition cursor-pointer" onclick="highlightErNode('WORKFLOW_EXECUTION')">
+                <td class="py-3 px-4 font-bold text-emerald-300">🎬 Workflow Execution</td>
+                <td class="py-3 px-4"><code>Namespace</code> + привязан к <code>Task Queue</code></td>
+                <td class="py-3 px-4">Состоит из одного или нескольких последовательных <code>Workflow Runs</code> (<code>RunId</code>)</td>
+                <td class="py-3 px-4 font-mono text-indigo-300">1 WorkflowId → N RunIds</td>
+              </tr>
+              <tr data-er="WORKFLOW_RUN" class="hover:bg-indigo-500/10 transition cursor-pointer" onclick="highlightErNode('WORKFLOW_RUN')">
+                <td class="py-3 px-4 font-bold text-teal-300">🔄 Workflow Run</td>
+                <td class="py-3 px-4"><code>Workflow Execution</code></td>
+                <td class="py-3 px-4">Имеет ровно 1 <code>Event History</code>; порождает <code>Activities</code>, <code>Timers</code>, <code>Child Workflows</code></td>
+                <td class="py-3 px-4 font-mono text-indigo-300">1 RunId → 1 Event History</td>
+              </tr>
+              <tr data-er="ACTIVITY_EXECUTION" class="hover:bg-indigo-500/10 transition cursor-pointer" onclick="highlightErNode('ACTIVITY_EXECUTION')">
+                <td class="py-3 px-4 font-bold text-rose-400">🛠️ Activity Execution</td>
+                <td class="py-3 px-4">Вызывается из <code>Workflow Run</code> через <code>ActivityStub</code></td>
+                <td class="py-3 px-4">Может состоять из <code>1..M</code> попыток (<code>Attempt</code>) согласно <code>RetryOptions</code></td>
+                <td class="py-3 px-4 font-mono text-indigo-300">1 Activity → M Attempts</td>
+              </tr>
+              <tr data-er="CHILD_WORKFLOW" class="hover:bg-indigo-500/10 transition cursor-pointer" onclick="highlightErNode('CHILD_WORKFLOW')">
+                <td class="py-3 px-4 font-bold text-amber-300">👶 Child Workflow</td>
+                <td class="py-3 px-4">Порождается родительским <code>Workflow Run</code></td>
+                <td class="py-3 px-4">Сам является полноценным <code>Workflow Execution</code> (связан через <code>ParentClosePolicy</code>)</td>
+                <td class="py-3 px-4 font-mono text-indigo-300">1 Parent → N Children</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 4: STEP SIMULATOR ==================== -->
+    <section id="tab-simulator" class="tab-panel hidden space-y-6">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-bold">4. Симулятор: как 1 строчка кода превращается в цепочку задач</h2>
+          <p class="text-sm muted-text">Пошагово пройдите вызов <code>standardActivities.callFlakyExternalService("Payment", 2)</code> с 2 сбоями и успешной 3-й попыткой.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="prevSimStep()" class="px-3 py-1.5 rounded-lg text-xs font-medium elevated-surface hover:opacity-80">◀ Назад</button>
+          <span id="sim-step-counter" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-300">Шаг 1 / 7</span>
+          <button onclick="nextSimStep()" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-500">Далее ▶</button>
+          <button onclick="resetSim()" class="px-3 py-1.5 rounded-lg text-xs font-medium elevated-surface hover:opacity-80">Сначала ↺</button>
+        </div>
+      </div>
+
+      <!-- Code Banner -->
+      <div class="card-surface rounded-xl p-4 font-mono text-xs flex flex-wrap items-center justify-between gap-3 border-l-4 border-l-indigo-500">
+        <div>
+          <span class="muted-text">// ShowcaseWorkflowImpl.java:</span><br/>
+          <span class="text-emerald-400">String</span> res = standardActivities.<span class="text-amber-300">callFlakyExternalService</span>(<span class="text-sky-300">"Payment"</span>, <span class="text-rose-400">2</span>);
+        </div>
+        <div class="text-xs px-3 py-1.5 rounded-lg elevated-surface" id="sim-status-badge">
+          🧠 Workflow Worker выполняет код до вызова Activity...
+        </div>
+      </div>
+
+      <!-- 4 Actors Columns -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div id="sim-col-wf" class="card-surface rounded-2xl p-4 border-2 transition space-y-2">
+          <div class="text-xs font-bold uppercase text-emerald-400">1. 🧠 Workflow Worker</div>
+          <div class="text-xs muted-text" id="sim-wf-text">Доходит до строки вызова ActivityStub и формирует команду ScheduleActivityTask.</div>
+        </div>
+        <div id="sim-col-server" class="card-surface rounded-2xl p-4 border-2 transition space-y-2">
+          <div class="text-xs font-bold uppercase text-indigo-400">2. 🏛️ Temporal Server</div>
+          <div class="text-xs muted-text" id="sim-server-text">Ожидает команд от воркера.</div>
+        </div>
+        <div id="sim-col-queue" class="card-surface rounded-2xl p-4 border-2 transition space-y-2">
+          <div class="text-xs font-bold uppercase text-purple-400">3. 📋 Task Queue</div>
+          <div class="text-xs muted-text" id="sim-queue-text">Очереди ShowcaseTaskQueue пусты.</div>
+        </div>
+        <div id="sim-col-act" class="card-surface rounded-2xl p-4 border-2 transition space-y-2">
+          <div class="text-xs font-bold uppercase text-rose-400">4. 🛠️ Activity Worker</div>
+          <div class="text-xs muted-text" id="sim-act-text">Слушает Activity Sub-Queue по Long Polling.</div>
+        </div>
+      </div>
+
+      <!-- Event History Log Live View -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="card-surface rounded-2xl p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-sm">📜 Неизменяемый Event History в БД (Save Points)</h3>
+            <span class="text-xs muted-text">Важно: ретраи (#1, #2) НЕ засоряют историю!</span>
+          </div>
+          <div id="sim-history-log" class="space-y-2 font-mono text-xs"></div>
+        </div>
+
+        <!-- Comparison Standard vs Local Activity -->
+        <div class="card-surface rounded-2xl p-5 space-y-3">
+          <h3 class="font-bold text-sm">⚡ Сравнение: Обычная Activity vs Local Activity</h3>
+          <div class="space-y-3 text-xs">
+            <div class="p-3 rounded-xl elevated-surface border-l-4 border-rose-500">
+              <div class="font-bold text-rose-300">🛠️ Обычная Activity (Standard Activity)</div>
+              <div class="mt-1 font-mono text-xs">Workflow Worker ──► Server (БД + Task Queue) ──► Activity Worker (любой хост)</div>
+              <p class="muted-text mt-1">Полная изоляция, бесконечные ретраи, балансировка нагрузки между хостами, но +10..30 мс на сеть и БД.</p>
+            </div>
+            <div class="p-3 rounded-xl elevated-surface border-l-4 border-amber-400">
+              <div class="font-bold text-amber-300">⚡ Local Activity (Локальная в памяти)</div>
+              <div class="mt-1 font-mono text-xs">Workflow Worker ──► Вызов в том же JVM-процессе ──► Запись итога в History</div>
+              <p class="muted-text mt-1">Задержка &lt; 1 мс, не нагружает Matching Service. Идеально для быстрых проверок (<code>fastLocalCheck</code>) и коротких шагов.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 5: STATE MACHINE ==================== -->
+    <section id="tab-states" class="tab-panel hidden space-y-6">
+      <div>
+        <h2 class="text-xl font-bold">5. Интерактивная диаграмма состояний (Жизненный цикл Workflow Execution)</h2>
+        <p class="text-sm muted-text">Нажимайте на кнопки триггеров, чтобы переводить процесс из одного состояния в другое (включая вложенные подсостояния внутри <code>Running</code> и «Машину времени» <code>Workflow Reset</code>).</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left Controls & Current State -->
+        <div class="lg:col-span-5 card-surface rounded-2xl p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase muted-text">Текущее состояние</span>
+            <span id="sm-current-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300">Running (ExecutingWorkflowTask)</span>
+          </div>
+          <p id="sm-explanation" class="text-sm muted-text leading-relaxed">
+            Процесс запущен через <code>WorkflowClient.start()</code>. Сейчас <code>Workflow Worker</code> активно выполняет ваш Java-код до ближайшей точки ожидания.
+          </p>
+
+          <div class="pt-2 border-t border-slate-700/60 space-y-2">
+            <div class="text-xs font-bold uppercase muted-text">Доступные переходы (нажмите для срабатывания):</div>
+            <div class="grid grid-cols-1 gap-2" id="sm-actions">
+              <button onclick="setWfState('waiting')" class="text-left px-3 py-2 rounded-lg text-xs elevated-surface hover:border-indigo-400 border border-transparent transition">
+                ⏸️ <strong>Ждать шаг:</strong> Вызвать Activity / <code>Workflow.sleep()</code> / <code>await()</code>
+              </button>
+              <button onclick="setWfState('executing')" class="text-left px-3 py-2 rounded-lg text-xs elevated-surface hover:border-indigo-400 border border-transparent transition">
+                ▶️ <strong>Разбудить:</strong> Activity завершилась / Таймер сработал / Пришёл <code>@SignalMethod</code>
+              </button>
+              <button onclick="setWfState('continued')" class="text-left px-3 py-2 rounded-lg text-xs elevated-surface hover:border-indigo-400 border border-transparent transition">
+                🔄 <strong>Continue-As-New:</strong> Вызвать <code>Workflow.continueAsNew()</code> (новый RunId с чистой историей)
+              </button>
+              <button onclick="setWfState('completed')" class="text-left px-3 py-2 rounded-lg text-xs elevated-surface hover:border-emerald-400 border border-transparent transition">
+                ✅ <strong>Завершить успешно:</strong> Метод <code>@WorkflowMethod</code> вернул результат (или мягкий откат Saga)
+              </button>
+              <button onclick="setWfState('failed')" class="text-left px-3 py-2 rounded-lg text-xs elevated-surface hover:border-rose-400 border border-transparent transition">
+                💥 <strong>Уронить (Failed):</strong> Выбросить <code>NonRetryable</code> ошибку без перехвата
+              </button>
+              <button onclick="setWfState('canceled')" class="text-left px-3 py-2 rounded-lg text-xs elevated-surface hover:border-amber-400 border border-transparent transition">
+                🛑 <strong>Мягко отменить (Canceled):</strong> <code>workflowStub.cancel()</code> + обработка <code>CancellationScope</code>
+              </button>
+              <button onclick="setWfState('terminated')" class="text-left px-3 py-2 rounded-lg text-xs elevated-surface hover:border-rose-500 border border-transparent transition">
+                ⚡ <strong>Убить принудительно (Terminated):</strong> <code>terminate()</code> или срабатывание <code>ParentClosePolicy</code>
+              </button>
+              <button onclick="setWfState('timedout')" class="text-left px-3 py-2 rounded-lg text-xs elevated-surface hover:border-orange-400 border border-transparent transition">
+                ⌛ <strong>Таймаут (TimedOut):</strong> Истёк глобальный <code>WorkflowExecutionTimeout</code>
+              </button>
+              <button onclick="setWfState('reset')" class="text-left px-3 py-2 rounded-lg text-xs bg-indigo-600/20 text-indigo-300 border border-indigo-500/40 hover:bg-indigo-600/30 transition">
+                ⏪ <strong>Workflow Reset («Машина времени»):</strong> Воскресить упавший процесс с прошлого шага!
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Visual State Diagram -->
+        <div class="lg:col-span-7 card-surface rounded-2xl p-5 flex flex-col justify-between space-y-4">
+          <!-- Running Composite Box -->
+          <div id="state-box-running" class="p-4 rounded-2xl border-2 border-emerald-500 bg-emerald-950/15 space-y-3 transition">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-sm text-emerald-400">🟢 RUNNING (Активный процесс)</span>
+              <span class="text-xs muted-text">WorkflowClient.start() / Schedule trigger</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div id="substate-executing" class="p-3 rounded-xl border-2 border-emerald-400 bg-emerald-500/20 transition">
+                <div class="font-bold text-xs">⚡ ExecutingWorkflowTask</div>
+                <div class="text-xs muted-text mt-1">Воркер крутит код до точки ожидания (несколько миллисекунд)</div>
+              </div>
+              <div id="substate-waiting" class="p-3 rounded-xl border border-slate-700 card-surface transition">
+                <div class="font-bold text-xs">⏳ WaitingOnServer</div>
+                <div class="text-xs muted-text mt-1">Ждёт Activity / Timer / Signal / ChildWorkflow (секунды, дни, месяцы)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ContinuedAsNew -->
+          <div id="state-box-continued" class="p-3 rounded-xl border border-slate-700 card-surface flex items-center justify-between transition">
+            <div>
+              <div class="font-bold text-xs text-sky-400">🔄 ContinuedAsNew</div>
+              <div class="text-xs muted-text">Текущий Run закрыт, мгновенно создан новый RunId с чистой историей</div>
+            </div>
+            <span class="text-xs font-mono muted-text">──► Новый Running</span>
+          </div>
+
+          <!-- Terminal States Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
+            <div id="state-box-completed" class="p-3 rounded-xl border border-slate-700 card-surface transition">
+              <div class="font-bold text-xs text-emerald-400">✅ Completed</div>
+              <div class="text-xs muted-text mt-1">Успешный возврат результата</div>
+            </div>
+            <div id="state-box-failed" class="p-3 rounded-xl border border-slate-700 card-surface transition">
+              <div class="font-bold text-xs text-rose-400">💥 Failed</div>
+              <div class="text-xs muted-text mt-1">Необработанное исключение (можно сделать Reset!)</div>
+            </div>
+            <div id="state-box-canceled" class="p-3 rounded-xl border border-slate-700 card-surface transition">
+              <div class="font-bold text-xs text-amber-400">🛑 Canceled</div>
+              <div class="text-xs muted-text mt-1">Корректная отмена через Scope</div>
+            </div>
+            <div id="state-box-terminated" class="p-3 rounded-xl border border-slate-700 card-surface transition">
+              <div class="font-bold text-xs text-red-400">⚡ Terminated</div>
+              <div class="text-xs muted-text mt-1">Убит без выполнения кода</div>
+            </div>
+            <div id="state-box-timedout" class="p-3 rounded-xl border border-slate-700 card-surface transition">
+              <div class="font-bold text-xs text-orange-400">⌛ TimedOut</div>
+              <div class="text-xs muted-text mt-1">Истёк таймаут выполнения</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 6: PROJECT MAP ==================== -->
+    <section id="tab-project" class="tab-panel hidden space-y-6">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-bold">6. Карта проекта: как сущности представлены в <code>temporal-spring-demo</code></h2>
+          <p class="text-sm muted-text">Все возможности Temporal, разложенные по очередям и реальным Java-классам вашего репозитория.</p>
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          <button onclick="filterProject('all')" class="px-3 py-1 rounded-lg text-xs font-medium bg-indigo-600 text-white">Все (15)</button>
+          <button onclick="filterProject('workflow')" class="px-3 py-1 rounded-lg text-xs font-medium elevated-surface">🎬 Workflow</button>
+          <button onclick="filterProject('activity')" class="px-3 py-1 rounded-lg text-xs font-medium elevated-surface">🛠️ Activity</button>
+          <button onclick="filterProject('client')" class="px-3 py-1 rounded-lg text-xs font-medium elevated-surface">🌐 Client / API</button>
+        </div>
+      </div>
+
+      <!-- Queue 1: OrderTaskQueue -->
+      <div class="card-surface rounded-2xl p-5 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-700/60 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">📋</span>
+            <h3 class="font-bold text-sm">Task Queue: <code class="text-sky-400">"OrderTaskQueue"</code> — Базовый пример</h3>
+          </div>
+          <span class="text-xs muted-text">Namespace: "default" (application.yml)</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div data-proj="workflow" class="proj-card p-3 rounded-xl elevated-surface space-y-1">
+            <div class="font-bold text-emerald-400">🎬 OrderWorkflow / OrderWorkflowImpl</div>
+            <div class="muted-text">Базовый линейный сценарий обработки заказа.</div>
+          </div>
+          <div data-proj="activity" class="proj-card p-3 rounded-xl elevated-surface space-y-1">
+            <div class="font-bold text-rose-400">🛠️ OrderActivity / OrderActivityImpl</div>
+            <div class="muted-text">Шаги резервирования и оплаты заказа.</div>
+          </div>
+          <div data-proj="client" class="proj-card p-3 rounded-xl elevated-surface space-y-1">
+            <div class="font-bold text-sky-400">🌐 OrderController (/api/orders/*)</div>
+            <div class="muted-text">REST-эндпоинты для запуска базового заказа.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Queue 2: ShowcaseTaskQueue -->
+      <div class="card-surface rounded-2xl p-5 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-700/60 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">📋</span>
+            <h3 class="font-bold text-sm">Task Queue: <code class="text-purple-400">"ShowcaseTaskQueue"</code> — Полная песочница возможностей</h3>
+          </div>
+          <span class="text-xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-300">12 паттернов Temporal</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+          <div data-proj="workflow" class="proj-card p-3.5 rounded-xl elevated-surface space-y-1">
+            <div class="font-bold text-emerald-400">🔀 Versioning (Безопасный деплой)</div>
+            <div class="font-mono text-xs text-indigo-300">Workflow.getVersion("showcase-flow-v1", ...)</div>
+            <div class="muted-text">Позволяет менять логику кода без поломки Replay у уже запущенных процессов.</div>
+          </div>
+          <div data-proj="workflow" class="proj-card p-3.5 rounded-xl elevated-surface space-y-1">
+            <div class="font-bold text-emerald-400">⚡ Local Activity</div>
+            <div class="font-mono text-xs text-indigo-300">localActivities.fastLocalCheck(...)</div>
+            <div class="muted-text">Вызов в памяти воркера за &lt; 1 мс без очереди Matching Service.</div>
+          </div>
+          <div data-proj="workflow" class="proj-card p-3.5 rounded-xl elevated-surface space-y-1">
+            <div class="font-bold text-emerald-400">⏰ Durable Timer + Await</div>
+            <div class="font-mono text-xs text-indigo-300">Workflow.await(Duration, () -&gt; approvedBySignal)</div>
+            <div class="muted-text">Персистентное ожидание условия или таймаута.</div>
+          </div>
+          <div data-proj="workflow" class="proj-card p-3.5 rounded-xl elevated-surface space-y-1">
+            <div class="font-bold text-cyan-400">🔔 Signal / 🔍 Query / 🔄 Update</div>
+            <div class="font-mono text-xs text-indigo-300">approveSignal / getState / adjustBudgetUpdate</div>
+            <div class="muted-text">Включая синхронную валидацию через <code>@UpdateValidatorMethod</code>.</div>
+          </div>
+          <div data-proj="workflow" class="proj-card p-3.5 rounded-xl elevated-surface space-y-1">
+            <div class="font-bold text-emerald-400">🏁 Параллельная гонка + Отмена</div>
+            <div class="font-mono text-xs text-indigo-300">Async.function + Promise.anyOf + CancellationScope</div>
+            <div class="muted-text">Запуск двух веток параллельно и автоматическая отмена проигравшей.</div>
+          </div>
+          <div data-proj="workflow" class="proj-card p-3.5 rounded-xl elevated-surface space-y-1">
+            <div class="font-bold text-amber-300">👶 Child Workflow + ⏪ Saga</div>
+            <div class="font-mono text-xs text-indigo-300">DeliveryChildWorkflow + new Saga(...)</div>
+            <div class="muted-text">Дочерний процесс доставки и LIFO-стек компенсаций при сбое.</div>
+          </div>
+          <div data-proj="activity" class="proj-card p-3.5 rounded-xl elevated-surface space-y-1">
+            <div class="font-bold text-rose-400">💥 Ретраи и ApplicationFailure</div>
+            <div class="font-mono text-xs text-indigo-300">ShowcaseActivityImpl.callFlakyExternalService</div>
+            <div class="muted-text">Демонстрация автоматических повторов и NonRetryable ошибок.</div>
+          </div>
+          <div data-proj="activity" class="proj-card p-3.5 rounded-xl elevated-surface space-y-1">
+            <div class="font-bold text-rose-400">💓 Heartbeat &amp; Checkpoint</div>
+            <div class="font-mono text-xs text-indigo-300">runHeavyTaskWithHeartbeat (ctx.heartbeat)</div>
+            <div class="muted-text">Продолжение долгой задачи с последнего чекпоинта при перезапуске воркера.</div>
+          </div>
+          <div data-proj="activity" class="proj-card p-3.5 rounded-xl elevated-surface space-y-1">
+            <div class="font-bold text-rose-400">🎟️ Async Activity Completion</div>
+            <div class="font-mono text-xs text-indigo-300">waitForExternalCallback + AsyncTokenRegistry</div>
+            <div class="muted-text">Освобождение потока воркера (<code>doNotCompleteOnReturn</code>) до внешнего HTTP-колбэка.</div>
+          </div>
+          <div data-proj="client" class="proj-card p-3.5 rounded-xl elevated-surface space-y-1 md:col-span-3">
+            <div class="font-bold text-sky-400">🌐 ShowcaseController (/api/showcase/*)</div>
+            <div class="font-mono text-xs text-indigo-300">WorkflowClient / ActivityCompletionClient / ScheduleClient</div>
+            <div class="muted-text">Управляет запуском сценариев, отправкой сигналов/апдейтов, завершением внешних Activity по TaskToken и созданием Cron-расписаний (Schedules).</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // ==================== THEME & TABS ====================
+    function toggleTheme() {
+      document.documentElement.classList.toggle('light');
+      document.documentElement.classList.toggle('dark');
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-panel').forEach(el => el.classList.add('hidden'));
+      document.getElementById('tab-' + tabId).classList.remove('hidden');
+
+      document.querySelectorAll('#main-tabs .tab-btn').forEach(btn => {
+        if (btn.dataset.tab === tabId) {
+          btn.className = 'tab-btn px-3 py-1.5 rounded-lg text-xs font-medium transition bg-indigo-600 text-white';
+        } else {
+          btn.className = 'tab-btn px-3 py-1.5 rounded-lg text-xs font-medium transition elevated-surface';
+        }
+      });
+    }
+
+    // ==================== TAB 1: HIERARCHY DATA & INSPECTOR ====================
+    const ENTITIES = {
+      cluster: {
+        badge: 'Инфраструктура',
+        location: 'Docker / Server + DB',
+        title: '🏛️ Temporal Cluster',
+        desc: 'Сервер оркестрации (Frontend, History, Matching, Worker сервисы) вместе с базой данных (PostgreSQL / Cassandra) и опциональным Elasticsearch. Хранит всю историю и очереди, но никогда не исполняет ваш бизнес-код.',
+        parent: 'Корень иерархии',
+        card: '1 Cluster → N Namespaces',
+        code: 'docker-compose.yml',
+        snippet: `services:\n  temporal:\n    image: temporalio/auto-setup\n    ports:\n      - "7233:7233"`
+      },
+      namespace: {
+        badge: 'Изоляция',
+        location: 'Temporal Server (БД)',
+        title: '📂 Namespace (напр. "default")',
+        desc: 'Изолированная «комната» (тенант) для проекта или окружения. Задаёт срок хранения завершённых историй (Retention Period), квоты RPS и список кастомных Search Attributes.',
+        parent: 'Temporal Cluster',
+        card: '1 Namespace → N Workflows / Queues / Schedules',
+        code: 'src/main/resources/application.yml',
+        snippet: `spring:\n  temporal:\n    namespace: default`
+      },
+      schedules: {
+        badge: 'Планировщик',
+        location: 'Temporal Server',
+        title: '🗓️ Schedules (Расписания)',
+        desc: 'Серверный планировщик (современная замена устаревшему CronWorkflow). По расписанию или интервалу порождает новые Workflow Executions. Поддерживает паузу, backfill и политики перекрытия (Overlap Policy).',
+        parent: 'Namespace',
+        card: '1 Schedule → N Workflow Executions',
+        code: 'ShowcaseController.java',
+        snippet: `scheduleClient.createSchedule("demo-schedule",\n  Schedule.newBuilder()\n    .setAction(action)\n    .setSpec(spec)\n    .build(), options);`
+      },
+      task_queue: {
+        badge: 'Маршрутизация',
+        location: 'Matching Service (RAM + БД)',
+        title: '📋 Task Queue ("ShowcaseTaskQueue")',
+        desc: 'Логическая именованная шина задач. Создаётся динамически при первом же упоминании строки имени. Соединяет Workflow Execution с процессами Worker по Long Polling.',
+        parent: 'Namespace',
+        card: '1 Task Queue ↔ N Workers',
+        code: 'ShowcaseWorkflow.java',
+        snippet: `@WorkflowInterface\n@TemporalWorkflow("ShowcaseTaskQueue")\npublic interface ShowcaseWorkflow { ... }`
+      },
+      wf_task_queue: {
+        badge: 'Подочередь',
+        location: 'Temporal Matching Service',
+        title: '🧠 Workflow Task Sub-Queue',
+        desc: 'Хранит задачи на принятие решений (Workflow Tasks): когда нужно прокрутить код @WorkflowImpl до следующего шага после старта, сигнала или завершения Activity.',
+        parent: 'Task Queue',
+        card: '1 Task Queue → 1 WF Sub-Queue',
+        code: 'ShowcaseWorkflowImpl.java',
+        snippet: `// Вычитывается автоматически Workflow Worker'ом`
+      },
+      act_task_queue: {
+        badge: 'Подочередь',
+        location: 'Temporal Matching Service',
+        title: '🛠️ Activity Task Sub-Queue',
+        desc: 'Хранит задачи на выполнение внешних операций (Activity Tasks): походы в БД, REST API, брокеры сообщений или тяжёлые вычисления.',
+        parent: 'Task Queue',
+        card: '1 Task Queue → 1 Activity Sub-Queue',
+        code: 'ShowcaseActivityImpl.java',
+        snippet: `// Вычитывается автоматически Activity Worker'ом`
+      },
+      sticky_queue: {
+        badge: 'Оптимизация кэша',
+        location: 'Память Worker + Server',
+        title: '📌 Sticky Queue',
+        desc: 'Специальная быстрая очередь конкретного экземпляра Worker, у которого в ОЗУ уже закэширован объект Workflow. Позволяет не пересылать всю Event History по сети на каждом шаге!',
+        parent: 'Task Queue + Worker Process',
+        card: '1 Worker Instance → 1 Sticky Queue',
+        code: 'Внутренний механизм SDK',
+        snippet: `// Если воркер с кэшем недоступен > 5 сек,\n// задача откатывается в общую очередь и делает Replay.`
+      },
+      workflow_execution: {
+        badge: 'Бизнес-процесс',
+        location: 'Temporal Server (БД)',
+        title: '🎬 Workflow Execution',
+        desc: 'Запущенный экземпляр сценария. Имеет уникальный бизнес-ключ WorkflowId в рамках Namespace (например, "order-101"). Может переживать рестарты воркеров и длиться месяцами.',
+        parent: 'Namespace',
+        card: '1 WorkflowId → N последовательных Workflow Runs',
+        code: 'ShowcaseController.java',
+        snippet: `WorkflowOptions.newBuilder()\n  .setWorkflowId("showcase-" + id)\n  .setTaskQueue("ShowcaseTaskQueue")\n  .build();`
+      },
+      workflow_run: {
+        badge: 'Попытка (RunId)',
+        location: 'Temporal Server (БД)',
+        title: '🔄 Workflow Run [RunId UUID]',
+        desc: 'Конкретная попытка выполнения внутри Workflow Execution. Новый RunId генерируется при Continue-As-New, Workflow Reset или полном ретрае всего сценария.',
+        parent: 'Workflow Execution',
+        card: '1 Workflow Run → 1 Event History',
+        code: 'WorkflowExecution (SDK)',
+        snippet: `WorkflowExecution exec = WorkflowClient.start(wf::run, req);\nString runId = exec.getRunId();`
+      },
+      event_history: {
+        badge: 'Журнал событий',
+        location: 'PostgreSQL / Cassandra',
+        title: '📜 Event History (#1..#N)',
+        desc: 'Строго неизменяемый (append-only) лог всех событий процесса. Именно по нему Workflow Worker восстанавливает состояние переменных через детерминированный Replay.',
+        parent: 'Workflow Run',
+        card: '1 RunId → 1 Event History (до 50 000 событий)',
+        code: 'Temporal Web UI (:8080)',
+        snippet: `#1 WorkflowExecutionStarted\n#5 ActivityTaskScheduled\n#6 ActivityTaskStarted\n#7 ActivityTaskCompleted`
+      },
+      mutable_state: {
+        badge: 'Состояние и индекс',
+        location: 'PostgreSQL + Elasticsearch',
+        title: '🗂️ Mutable State + Memo + Search Attributes',
+        desc: 'Текущий слепок состояния процесса на сервере (активные таймеры, запущенные Activity) плюс индексируемые поля Search Attributes для фильтрации процессов в UI/CLI.',
+        parent: 'Workflow Run',
+        card: '1 RunId → 1 Mutable State',
+        code: 'Workflow.upsertTypedSearchAttributes(...)',
+        snippet: `// Позволяет искать в UI:\n// WorkflowType = "ShowcaseWorkflow" AND CustomStatus = "APPROVED"`
+      },
+      signal: {
+        badge: 'Входящее сообщение',
+        location: 'Client → Server → Worker',
+        title: '🔔 Signal (@SignalMethod)',
+        desc: 'Асинхронный «выстрелил и забыл» вызов снаружи. Записывается в Event History и будит ожидающий Workflow (например, Workflow.await), меняя его внутреннее состояние.',
+        parent: 'Workflow Run',
+        card: '1 Run → N Signals',
+        code: 'ShowcaseWorkflowImpl.java',
+        snippet: `@Override\npublic void approveSignal(String approver) {\n  this.approvedBySignal = true;\n}`
+      },
+      query: {
+        badge: 'Чтение состояния',
+        location: 'Client → Server → Worker (Sync)',
+        title: '🔍 Query (@QueryMethod)',
+        desc: 'Синхронный запрос только для чтения текущего состояния переменных Workflow. НЕ меняет стейт и НЕ записывается в Event History.',
+        parent: 'Workflow Run',
+        card: '1 Run → N Queries',
+        code: 'ShowcaseWorkflowImpl.java',
+        snippet: `@Override\npublic ShowcaseState getState() {\n  return this.currentState;\n}`
+      },
+      update: {
+        badge: 'Синхронная мутация',
+        location: 'Client ↔ Server ↔ Worker',
+        title: '🔄 Update (@UpdateMethod + Validator)',
+        desc: 'Комбинация Signal + Query: синхронно меняет состояние Workflow и сразу возвращает результат клиенту. Если @UpdateValidatorMethod кинет исключение, запрос отвергается без засорения Event History!',
+        parent: 'Workflow Run',
+        card: '1 Run → N Updates',
+        code: 'ShowcaseWorkflowImpl.java',
+        snippet: `@UpdateValidatorMethod(updateName = "adjustBudgetUpdate")\npublic void validateBudget(int delta) {\n  if (budget + delta < 0) throw new IllegalArgumentException();\n}`
+      },
+      durable_timer: {
+        badge: 'Персистентный таймер',
+        location: 'Server Timer Queue (БД)',
+        title: '⏰ Durable Timer (Workflow.sleep / await)',
+        desc: 'Будильник, сохраняемый в БД сервера. Во время ожидания поток на воркере не блокируется, а сам воркер можно спокойно перезагружать.',
+        parent: 'Workflow Run',
+        card: '1 Run → N Timers',
+        code: 'ShowcaseWorkflowImpl.java',
+        snippet: `boolean ok = Workflow.await(\n  Duration.ofSeconds(15),\n  () -> approvedBySignal\n);`
+      },
+      local_activity: {
+        badge: 'Быстрый шаг в ОЗУ',
+        location: 'Память того же Workflow Worker',
+        title: '⚡ Local Activity',
+        desc: 'Выполняется синхронно в памяти того же JVM-процесса, где крутится Workflow Task, без публикации в общую очередь. В историю пишется только финальный результат MarkerRecorded.',
+        parent: 'Workflow Run',
+        card: '1 Run → N Local Activities',
+        code: 'ShowcaseWorkflowImpl.java',
+        snippet: `Workflow.newLocalActivityStub(\n  ShowcaseActivity.class,\n  LocalActivityOptions.newBuilder()...\n);`
+      },
+      activity_execution: {
+        badge: 'Внешний I/O шаг',
+        location: 'Activity Queue → Activity Worker',
+        title: '🛠️ Activity Execution',
+        desc: 'Изолированный шаг для любого недетерминированного кода (сеть, БД, файлы). Сервер сам отслеживает таймауты (StartToClose) и перезапускает шаг по RetryOptions.',
+        parent: 'Workflow Run',
+        card: '1 Activity → M Attempts (попыток)',
+        code: 'ShowcaseActivityImpl.java',
+        snippet: `RetryOptions.newBuilder()\n  .setInitialInterval(Duration.ofSeconds(1))\n  .setMaximumAttempts(3)\n  .build();`
+      },
+      heartbeat: {
+        badge: 'Пульс и чекпоинт',
+        location: 'Activity Worker → Server',
+        title: '💓 Heartbeat & Checkpoint',
+        desc: 'Для долгих задач Activity периодически шлёт пульс с прогрессом (например, номер обработанной страницы). Если воркер упадёт, следующий воркер продолжит с этого же места!',
+        parent: 'Activity Execution',
+        card: '1 Activity Attempt → N Heartbeats',
+        code: 'ShowcaseActivityImpl.java',
+        snippet: `Optional<Integer> saved = ctx.getHeartbeatDetails(Integer.class);\nctx.heartbeat(currentStep);`
+      },
+      task_token: {
+        badge: 'Асинхронный колбэк',
+        location: 'Внешняя система → Server',
+        title: '🎟️ TaskToken (Async Activity Completion)',
+        desc: 'Уникальный байтовый токен задачи. Позволяет методу Activity завершиться (doNotCompleteOnReturn), освободив поток воркера, а закрыть шаг позже HTTP-вызовом из другой системы.',
+        parent: 'Activity Execution',
+        card: '1 Activity → 1 TaskToken',
+        code: 'ShowcaseActivityImpl.java / ShowcaseController.java',
+        snippet: `byte[] token = ctx.getTaskToken();\nctx.doNotCompleteOnReturn();\n// Позже: completionClient.complete(token, result);`
+      },
+      cancellation_scope: {
+        badge: 'Групповая отмена',
+        location: 'Workflow Worker',
+        title: '🛡️ CancellationScope',
+        desc: 'Логический контейнер в коде Workflow, позволяющий отменить конкретную группу параллельных задач (например, проигравшую ветку гонки Promise.anyOf), не отменяя весь Workflow.',
+        parent: 'Workflow Run',
+        card: '1 Run → N Scopes',
+        code: 'ShowcaseWorkflowImpl.java',
+        snippet: `CancellationScope scope = Workflow.newCancellationScope(() -> {\n  // параллельные вызовы\n});\nscope.cancel();`
+      },
+      saga: {
+        badge: 'Компенсации LIFO',
+        location: 'Workflow Worker',
+        title: '⏪ Saga (Распределённая транзакция)',
+        desc: 'Встроенный в Temporal SDK класс управления компенсирующими транзакциями. Перед каждым шагом регистрируется компенсирующая Activity, а при ошибке вызывается saga.compensate() в обратном порядке (LIFO).',
+        parent: 'Workflow Run',
+        card: '1 Saga → N Compensations',
+        code: 'ShowcaseWorkflowImpl.java',
+        snippet: `Saga saga = new Saga(new Saga.Options.Builder().build());\nsaga.addCompensation(activities::sagaCompensateInventory, id);\n// В блоке catch:\nsaga.compensate();`
+      },
+      child_workflow: {
+        badge: 'Дочерний процесс',
+        location: 'Temporal Server + Worker',
+        title: '👶 Child Workflow Execution',
+        desc: 'Полноценный отдельный Workflow со своей собственной Event History и RunId, запущенный из родительского сценария. Управляется через ParentClosePolicy (например, TERMINATE или ABANDON при гибели родителя).',
+        parent: 'Workflow Run',
+        card: '1 Parent Run → N Child Workflows',
+        code: 'DeliveryChildWorkflowImpl.java',
+        snippet: `ChildWorkflowOptions.newBuilder()\n  .setParentClosePolicy(ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE)\n  .build();`
+      }
+    };
+
+    function selectEntity(key, ev) {
+      if (ev) ev.stopPropagation();
+      const data = ENTITIES[key];
+      if (!data) return;
+      document.getElementById('insp-badge').textContent = data.badge;
+      document.getElementById('insp-location').textContent = data.location;
+      document.getElementById('insp-title').textContent = data.title;
+      document.getElementById('insp-desc').textContent = data.desc;
+      document.getElementById('insp-parent').textContent = data.parent;
+      document.getElementById('insp-card').textContent = data.card;
+      document.getElementById('insp-code').textContent = data.code;
+      document.getElementById('insp-snippet').textContent = data.snippet;
+
+      document.querySelectorAll('.matryoshka-node').forEach(el => {
+        el.classList.remove('ring-2', 'ring-indigo-400');
+      });
+      if (ev && ev.currentTarget) {
+        const box = ev.currentTarget.closest('.matryoshka-node') || ev.currentTarget;
+        box.classList.add('ring-2', 'ring-indigo-400');
+      }
+    }
+
+    function toggleCollapse(id, ev) {
+      if (ev) ev.stopPropagation();
+      const target = document.getElementById(id);
+      if (!target) return;
+      const isHidden = target.classList.toggle('hidden');
+      if (ev && ev.currentTarget) {
+        ev.currentTarget.textContent = isHidden ? '▶' : '▼';
+      }
+    }
+
+    function expandAllHierarchy(expand) {
+      ['cluster-children', 'namespace-children', 'tq-children', 'wfe-children', 'wfr-children'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('hidden', !expand);
+      });
+    }
+
+    function filterHierarchy(query) {
+      const q = query.trim().toLowerCase();
+      document.querySelectorAll('.matryoshka-node').forEach(node => {
+        if (!q) {
+          node.style.opacity = '1';
+          return;
+        }
+        const text = node.innerText.toLowerCase();
+        node.style.opacity = text.includes(q) ? '1' : '0.35';
+      });
+    }
+
+    // ==================== TAB 2: PHYSICAL BOUNDARIES ====================
+    const BOUNDARIES = {
+      client: {
+        title: '🌐 Уровень 1: Клиент (REST Controller / Внешний сервис / CLI / Web UI)',
+        text: 'Клиент не выполняет шаги Workflow. Он только отправляет gRPC-команды на порт 7233 сервера: запустить процесс (start), послать сигнал (@SignalMethod), запросить состояние (@QueryMethod), выполнить синхронный Update или прислать внешний результат Activity по TaskToken.'
+      },
+      server: {
+        title: '🏛️ Уровень 2: Temporal Server + PostgreSQL (Оркестратор и Персистентность)',
+        text: 'Сервер хранит в PostgreSQL неизменяемый Event History (#1..#N) и Mutable State. В оперативной памяти он держит Task Queues (Matching Service) и таймеры. Сервер понятия не имеет, на каком языке написан ваш код — он лишь раздаёт задачи воркерам.'
+      },
+      worker: {
+        title: '👷 Уровень 3: Worker Process (Spring Boot приложение на порту 8081)',
+        text: 'Именно здесь живёт весь ваш Java-код (@WorkflowImpl и @ActivityImpl). Воркер сам устанавливает исходящий Long Polling к серверу, забирает задачи из очереди ShowcaseTaskQueue, выполняет их и возвращает результат обратно в Event History.'
+      }
+    };
+
+    function selectBoundary(key) {
+      const info = BOUNDARIES[key];
+      if (!info) return;
+      document.getElementById('bound-detail-title').textContent = info.title;
+      document.getElementById('bound-detail-text').textContent = info.text;
+      ['client', 'server', 'worker'].forEach(k => {
+        const el = document.getElementById('bound-' + k);
+        if (k === key) {
+          el.classList.add('ring-2', 'ring-indigo-400');
+        } else {
+          el.classList.remove('ring-2', 'ring-indigo-400');
+        }
+      });
+    }
+
+    // ==================== TAB 3: ER GRAPH ====================
+    const ER_NODES = [
+      { id: 'CLUSTER', label: '🏛️ TEMPORAL_CLUSTER', x: 110, y: 60, color: '#6366f1' },
+      { id: 'NAMESPACE', label: '📂 NAMESPACE', x: 350, y: 60, color: '#0ea5e9' },
+      { id: 'SCHEDULE', label: '🗓️ SCHEDULE', x: 350, y: 180, color: '#f59e0b' },
+      { id: 'TASK_QUEUE', label: '📋 TASK_QUEUE', x: 110, y: 240, color: '#a855f7' },
+      { id: 'WORKER', label: '👷 WORKER_PROCESS', x: 110, y: 400, color: '#10b981' },
+      { id: 'WORKFLOW_EXECUTION', label: '🎬 WORKFLOW_EXECUTION', x: 610, y: 120, color: '#10b981' },
+      { id: 'WORKFLOW_RUN', label: '🔄 WORKFLOW_RUN', x: 610, y: 250, color: '#14b8a6' },
+      { id: 'EVENT_HISTORY', label: '📜 EVENT_HISTORY', x: 890, y: 130, color: '#06b6d4' },
+      { id: 'WORKFLOW_TASK', label: '🧠 WORKFLOW_TASK', x: 360, y: 310, color: '#8b5cf6' },
+      { id: 'ACTIVITY_EXECUTION', label: '🛠️ ACTIVITY_EXECUTION', x: 360, y: 410, color: '#f43f5e' },
+      { id: 'DURABLE_TIMER', label: '⏰ DURABLE_TIMER', x: 890, y: 230, color: '#f43f5e' },
+      { id: 'CHILD_WORKFLOW', label: '👶 CHILD_WORKFLOW', x: 890, y: 320, color: '#f59e0b' },
+      { id: 'SIGNAL_QUERY_UPDATE', label: '📡 SIGNAL / QUERY / UPDATE', x: 890, y: 410, color: '#06b6d4' }
+    ];
+
+    const ER_EDGES = [
+      { from: 'CLUSTER', to: 'NAMESPACE', label: '1:N' },
+      { from: 'NAMESPACE', to: 'SCHEDULE', label: '1:N' },
+      { from: 'NAMESPACE', to: 'TASK_QUEUE', label: '1:N' },
+      { from: 'NAMESPACE', to: 'WORKFLOW_EXECUTION', label: '1:N' },
+      { from: 'SCHEDULE', to: 'WORKFLOW_EXECUTION', label: '1:N старт' },
+      { from: 'WORKFLOW_EXECUTION', to: 'WORKFLOW_RUN', label: '1:N RunId' },
+      { from: 'WORKFLOW_RUN', to: 'EVENT_HISTORY', label: '1:1' },
+      { from: 'WORKFLOW_RUN', to: 'WORKFLOW_TASK', label: '1:N' },
+      { from: 'WORKFLOW_RUN', to: 'ACTIVITY_EXECUTION', label: '1:N' },
+      { from: 'WORKFLOW_RUN', to: 'DURABLE_TIMER', label: '1:N' },
+      { from: 'WORKFLOW_RUN', to: 'CHILD_WORKFLOW', label: '1:N' },
+      { from: 'WORKFLOW_RUN', to: 'SIGNAL_QUERY_UPDATE', label: '1:N' },
+      { from: 'TASK_QUEUE', to: 'WORKFLOW_TASK', label: '1:N буфер' },
+      { from: 'TASK_QUEUE', to: 'ACTIVITY_EXECUTION', label: '1:N буфер' },
+      { from: 'WORKER', to: 'TASK_QUEUE', label: 'N:1 Poll' }
+    ];
+
+    function renderErGraph(selectedId = null) {
+      const edgesGroup = document.getElementById('er-edges');
+      const nodesGroup = document.getElementById('er-nodes');
+      edgesGroup.innerHTML = '';
+      nodesGroup.innerHTML = '';
+
+      const nodeMap = {};
+      ER_NODES.forEach(n => nodeMap[n.id] = n);
+
+      ER_EDGES.forEach(e => {
+        const n1 = nodeMap[e.from];
+        const n2 = nodeMap[e.to];
+        const isActive = !selectedId || e.from === selectedId || e.to === selectedId;
+        const opacity = isActive ? '0.95' : '0.15';
+
+        const mx = (n1.x + n2.x) / 2;
+        const my = (n1.y + n2.y) / 2;
+
+        edgesGroup.innerHTML += `
+          <g style="opacity:${opacity}; transition: opacity 0.2s">
+            <line x1="${n1.x}" y1="${n1.y}" x2="${n2.x}" y2="${n2.y}"
+                  stroke="${isActive && selectedId ? '#818cf8' : '#475569'}"
+                  stroke-width="${isActive && selectedId ? '2.5' : '1.5'}"
+                  marker-end="url(#arrow)" />
+            <rect x="${mx - 28}" y="${my - 10}" width="56" height="18" rx="4" fill="#0f172a" stroke="#334155" />
+            <text x="${mx}" y="${my + 3}" text-anchor="middle" fill="#cbd5e1" font-size="10" font-family="monospace">${e.label}</text>
+          </g>
+        `;
+      });
+
+      ER_NODES.forEach(n => {
+        const connected = !selectedId || n.id === selectedId || ER_EDGES.some(e => (e.from === selectedId && e.to === n.id) || (e.to === selectedId && e.from === n.id));
+        const opacity = connected ? '1' : '0.25';
+        const strokeW = n.id === selectedId ? '3' : '1.5';
+
+        nodesGroup.innerHTML += `
+          <g transform="translate(${n.x - 95}, ${n.y - 20})"
+             style="opacity:${opacity}; cursor:pointer; transition: opacity 0.2s"
+             onclick="highlightErNode('${n.id}')">
+            <rect width="190" height="40" rx="10" fill="#1e293b" stroke="${n.color}" stroke-width="${strokeW}" />
+            <text x="95" y="24" text-anchor="middle" fill="#f8fafc" font-size="11" font-weight="bold">${n.label}</text>
+          </g>
+        `;
+      });
+    }
+
+    function highlightErNode(nodeId) {
+      renderErGraph(nodeId);
+      document.getElementById('er-table-status').textContent = 'Фильтр по узлу: ' + nodeId;
+      document.querySelectorAll('#er-table-body tr').forEach(tr => {
+        const rowId = tr.dataset.er;
+        const related = rowId === nodeId || ER_EDGES.some(e => (e.from === nodeId && e.to === rowId) || (e.to === nodeId && e.from === rowId));
+        tr.style.opacity = related ? '1' : '0.3';
+      });
+    }
+
+    function resetErSelection() {
+      renderErGraph(null);
+      document.getElementById('er-table-status').textContent = 'Показаны все сущности';
+      document.querySelectorAll('#er-table-body tr').forEach(tr => tr.style.opacity = '1');
+    }
+
+    // ==================== TAB 4: STEP SIMULATOR ====================
+    const SIM_STEPS = [
+      {
+        badge: 'Шаг 1/7 • Планирование Activity в коде Workflow',
+        activeCol: 'wf',
+        wf: 'Доходит до строки callFlakyExternalService("Payment", 2) и отправляет команду ScheduleActivityTask на сервер.',
+        server: 'Ожидает команды завершения Workflow Task.',
+        queue: 'Пусто.',
+        act: 'Слушает очередь по Long Polling.',
+        history: [
+          '#1 WorkflowExecutionStarted',
+          '#2 WorkflowTaskScheduled',
+          '#3 WorkflowTaskStarted',
+          '#4 WorkflowTaskCompleted'
+        ]
+      },
+      {
+        badge: 'Шаг 2/7 • Сервер пишет событие в БД и кладёт задачу в очередь',
+        activeCol: 'server',
+        wf: 'Завершил Workflow Task и ждёт ответа сервера.',
+        server: 'Записал #5 ActivityTaskScheduled в Event History и положил задачу в Activity Sub-Queue.',
+        queue: '📥 В очереди [Activity Task Sub-Queue] лежит задача callFlakyExternalService (Attempt #1).',
+        act: 'Мгновенно забирает задачу по Long Polling!',
+        history: [
+          '#1..#4 (Старт сценария)',
+          '#5 ActivityTaskScheduled (name="callFlakyExternalService", queue="ShowcaseTaskQueue")'
+        ]
+      },
+      {
+        badge: 'Шаг 3/7 • Попытка #1 -> ОШИБКА! (Серверный Retry Backoff 1 сек)',
+        activeCol: 'act',
+        wf: 'Спит (не тратит потоки).',
+        server: 'Получил сбой попытки #1. В Event History ничего НЕ пишет! Запускает Retry Timer на 1.0 сек.',
+        queue: '⏳ Задача ждёт 1 сек в Retry Timer перед возвратом в очередь.',
+        act: '💥 Попытка #1 выбросила RuntimeException("Временный сбой шлюза #1").',
+        history: [
+          '#1..#4 (Старт сценария)',
+          '#5 ActivityTaskScheduled (в Mutable State: Attempt=1, LastFailure="Временный сбой #1")'
+        ]
+      },
+      {
+        badge: 'Шаг 4/7 • Попытка #2 -> ОШИБКА! (Серверный Retry Backoff 1.5 сек)',
+        activeCol: 'act',
+        wf: 'Спит (не тратит потоки).',
+        server: 'Получил сбой попытки #2. Снова НЕ засоряет Event History! Ждёт 1.5 сек по коэффициенту 1.5x.',
+        queue: '⏳ Задача ждёт 1.5 сек перед попыткой #3.',
+        act: '💥 Попытка #2 выбросила RuntimeException("Временный сбой шлюза #2").',
+        history: [
+          '#1..#4 (Старт сценария)',
+          '#5 ActivityTaskScheduled (в Mutable State: Attempt=2, LastFailure="Временный сбой #2")'
+        ]
+      },
+      {
+        badge: 'Шаг 5/7 • Попытка #3 -> УСПЕХ!',
+        activeCol: 'act',
+        wf: 'Спит.',
+        server: 'Принимает успешный результат от Activity Worker.',
+        queue: 'Пусто.',
+        act: '✅ Попытка #3 завершилась успешно! Возвращает строку: "Успешно выполнено с попытки #3".',
+        history: [
+          '#1..#4 (Старт сценария)',
+          '#5 ActivityTaskScheduled',
+          '#6 ActivityTaskStarted (attempt = 3)'
+        ]
+      },
+      {
+        badge: 'Шаг 6/7 • Запись результата в БД и побудка Workflow',
+        activeCol: 'server',
+        wf: 'Готов принять задачу из Sticky Queue.',
+        server: 'Пишет #7 ActivityTaskCompleted в БД и кладёт задачу "Разбуди Workflow!" (#8 WorkflowTaskScheduled).',
+        queue: '📥 В очереди [Workflow Task Sub-Queue] задача на продолжение сценария.',
+        act: 'Свободен, ждёт следующих задач.',
+        history: [
+          '#5 ActivityTaskScheduled',
+          '#6 ActivityTaskStarted (attempt = 3)',
+          '#7 ActivityTaskCompleted (result = "Успешно выполнено с попытки #3")',
+          '#8 WorkflowTaskScheduled'
+        ]
+      },
+      {
+        badge: 'Шаг 7/7 • Продолжение сценария со следующей строчки кода!',
+        activeCol: 'wf',
+        wf: '🎉 Забирает Workflow Task, подставляет строку в переменную `res` и переходит к следующей строчке Java-кода!',
+        server: 'Фиксирует продвижение сценария.',
+        queue: 'Пусто.',
+        act: 'Свободен.',
+        history: [
+          '#7 ActivityTaskCompleted (result = "Успешно выполнено с попытки #3")',
+          '#8 WorkflowTaskScheduled',
+          '#9 WorkflowTaskStarted',
+          '#10 WorkflowTaskCompleted'
+        ]
+      }
+    ];
+
+    let currentSimStep = 0;
+
+    function renderSimStep() {
+      const s = SIM_STEPS[currentSimStep];
+      document.getElementById('sim-step-counter').textContent = `Шаг ${currentSimStep + 1} / ${SIM_STEPS.length}`;
+      document.getElementById('sim-status-badge').textContent = s.badge;
+      document.getElementById('sim-wf-text').textContent = s.wf;
+      document.getElementById('sim-server-text').textContent = s.server;
+      document.getElementById('sim-queue-text').textContent = s.queue;
+      document.getElementById('sim-act-text').textContent = s.act;
+
+      ['wf', 'server', 'queue', 'act'].forEach(col => {
+        const el = document.getElementById('sim-col-' + col);
+        if (col === s.activeCol) {
+          el.classList.add('border-indigo-500', 'ring-2', 'ring-indigo-400/50');
+        } else {
+          el.classList.remove('border-indigo-500', 'ring-2', 'ring-indigo-400/50');
+        }
+      });
+
+      const logContainer = document.getElementById('sim-history-log');
+      logContainer.innerHTML = s.history.map(item =>
+        `<div class="p-2 rounded elevated-surface border-l-2 border-indigo-400">${item}</div>`
+      ).join('');
+    }
+
+    function nextSimStep() {
+      currentSimStep = (currentSimStep + 1) % SIM_STEPS.length;
+      renderSimStep();
+    }
+    function prevSimStep() {
+      currentSimStep = (currentSimStep - 1 + SIM_STEPS.length) % SIM_STEPS.length;
+      renderSimStep();
+    }
+    function resetSim() {
+      currentSimStep = 0;
+      renderSimStep();
+    }
+
+    // ==================== TAB 5: STATE MACHINE ====================
+    const WF_STATES = {
+      executing: {
+        badge: 'Running → ExecutingWorkflowTask',
+        color: 'bg-emerald-500/20 text-emerald-300',
+        desc: 'Воркер активно выполняет ваш Java-код (@WorkflowMethod или обработчик сигнала) до следующей точки ожидания. Обычно занимает несколько миллисекунд.',
+        activeMain: 'running',
+        activeSub: 'executing'
+      },
+      waiting: {
+        badge: 'Running → WaitingOnServer',
+        color: 'bg-sky-500/20 text-sky-300',
+        desc: 'Процесс поставлен на паузу на стороне сервера: ждёт завершения Activity, срабатывания Durable Timer (Workflow.sleep/await), прихода Signal или завершения Child Workflow.',
+        activeMain: 'running',
+        activeSub: 'waiting'
+      },
+      continued: {
+        badge: 'ContinuedAsNew → Running',
+        color: 'bg-indigo-500/20 text-indigo-300',
+        desc: 'Вызван Workflow.continueAsNew()! Текущий Run закрывается, и сервер мгновенно создаёт новый RunId с тем же WorkflowId и чистой Event History, чтобы история не переполнялась.',
+        activeMain: 'continued',
+        activeSub: null
+      },
+      completed: {
+        badge: 'Completed (Терминальное состояние)',
+        color: 'bg-emerald-500/20 text-emerald-300',
+        desc: 'Метод @WorkflowMethod успешно вернул результат (в том числе после контролируемого отката транзакции через Saga.compensate()). История сохраняется на время Retention Period.',
+        activeMain: 'completed',
+        activeSub: null
+      },
+      failed: {
+        badge: 'Failed (Упал с ошибкой)',
+        color: 'bg-rose-500/20 text-rose-300',
+        desc: 'В коде выброшено необработанное исключение или Activity исчерпала все попытки RetryOptions. Вы можете починить баг в коде и нажать «Workflow Reset», чтобы продолжить процесс с прошлого шага!',
+        activeMain: 'failed',
+        activeSub: null
+      },
+      canceled: {
+        badge: 'Canceled (Корректно отменён)',
+        color: 'bg-amber-500/20 text-amber-300',
+        desc: 'Клиент вызвал workflowStub.cancel(), а код Workflow перехватил CanceledFailure и аккуратно выполнил очистку ресурсов.',
+        activeMain: 'canceled',
+        activeSub: null
+      },
+      terminated: {
+        badge: 'Terminated (Принудительно убит)',
+        color: 'bg-red-500/20 text-red-300',
+        desc: 'Процесс принудительно остановлен на сервере через terminate() (или убит политикой ParentClosePolicy при закрытии родителя) без выполнения какого-либо кода очистки.',
+        activeMain: 'terminated',
+        activeSub: null
+      },
+      timedout: {
+        badge: 'TimedOut (Истёк таймаут)',
+        color: 'bg-orange-500/20 text-orange-300',
+        desc: 'Превышен глобальный лимит времени жизни процесса (WorkflowExecutionTimeout или WorkflowRunTimeout).',
+        activeMain: 'timedout',
+        activeSub: null
+      },
+      reset: {
+        badge: '⏪ Workflow Reset → Running (Новый RunId)',
+        color: 'bg-indigo-500/20 text-indigo-300',
+        desc: 'Машина времени сработала! Сервер создал новый RunId, скопировал Event History до проблемного шага и снова запустил процесс в состояние Running.',
+        activeMain: 'running',
+        activeSub: 'executing'
+      }
+    };
+
+    function setWfState(stateKey) {
+      const st = WF_STATES[stateKey];
+      if (!st) return;
+      const badge = document.getElementById('sm-current-badge');
+      badge.textContent = st.badge;
+      badge.className = 'px-3 py-1 rounded-full text-xs font-bold ' + st.color;
+      document.getElementById('sm-explanation').textContent = st.desc;
+
+      ['running', 'continued', 'completed', 'failed', 'canceled', 'terminated', 'timedout'].forEach(k => {
+        const box = document.getElementById('state-box-' + k);
+        if (!box) return;
+        if (k === st.activeMain) {
+          box.classList.add('ring-2', 'ring-indigo-400', 'border-indigo-400');
+        } else {
+          box.classList.remove('ring-2', 'ring-indigo-400', 'border-indigo-400');
+        }
+      });
+
+      ['executing', 'waiting'].forEach(sub => {
+        const subBox = document.getElementById('substate-' + sub);
+        if (!subBox) return;
+        if (sub === st.activeSub) {
+          subBox.className = 'p-3 rounded-xl border-2 border-emerald-400 bg-emerald-500/20 transition';
+        } else {
+          subBox.className = 'p-3 rounded-xl border border-slate-700 card-surface transition opacity-60';
+        }
+      });
+    }
+
+    // ==================== TAB 6: PROJECT MAP FILTER ====================
+    function filterProject(category) {
+      document.querySelectorAll('.proj-card').forEach(card => {
+        if (category === 'all' || card.dataset.proj === category) {
+          card.classList.remove('hidden');
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+    }
+
+    // Initialize views on load
+    renderErGraph(null);
+    renderSimStep();
+  </script>
+</body>
+</html>
